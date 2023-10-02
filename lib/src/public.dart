@@ -37,12 +37,13 @@ String tr(
   List<String>? args,
   Map<String, String>? namedArgs,
   String? gender,
+  bool forceFallback = false,
 }) {
   return context != null
       ? Localization.of(context)!
-          .tr(key, args: args, namedArgs: namedArgs, gender: gender)
+          .tr(key, args: args, namedArgs: namedArgs, gender: gender, forceFallback: forceFallback)
       : Localization.instance
-          .tr(key, args: args, namedArgs: namedArgs, gender: gender);
+          .tr(key, args: args, namedArgs: namedArgs, gender: gender, forceFallback: forceFallback);
 }
 
 bool trExists(String key) {
@@ -108,10 +109,11 @@ String plural(
   Map<String, String>? namedArgs,
   String? name,
   NumberFormat? format,
+  bool forceFallback = false,
 }) {
   return context != null
       ? Localization.of(context)!.plural(key, value,
-          args: args, namedArgs: namedArgs, name: name, format: format)
+          args: args, namedArgs: namedArgs, name: name, format: format, forceFallback: forceFallback)
       : Localization.instance.plural(key, value,
-          args: args, namedArgs: namedArgs, name: name, format: format);
+          args: args, namedArgs: namedArgs, name: name, format: format, forceFallback: forceFallback);
 }
