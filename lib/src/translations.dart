@@ -27,11 +27,9 @@ class Translations {
     var value = _translations![kHead];
 
     for (var i = 1; i < keys.length; i++) {
-      print(value);
       if (value is Map<String, dynamic> && !value.containsKey(keys[i]) && keys.sublist(i).length >= 2) {
         final subkeyId = keys[i] + '.' + keys[i + 1];
-        print(subkeyId);
-        if (value[subkeyId]) value = value[subkeyId];
+        if (value.containsKey(subkeyId)) value = value[subkeyId];
       }
       if (value is Map<String, dynamic>) value = value[keys[i]];
     }
