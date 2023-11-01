@@ -29,6 +29,10 @@ class Translations {
     // print(value);
 
     for (var i = 1; i < keys.length; i++) {
+      if (value is Map<String, dynamic> && value[keys[i]] == null && keys.sublist(i).length > 2) {
+        final subkeyId = keys[i] + '.' + keys[i + 1];
+        if (value[subkeyId]) value = value[subkeyId];
+      }
       if (value is Map<String, dynamic>) value = value[keys[i]];
     }
 
