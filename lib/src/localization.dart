@@ -9,8 +9,7 @@ class Localization {
   late Locale _locale;
 
   final RegExp _replaceArgRegex = RegExp('{}');
-  final RegExp _linkKeyMatcher =
-      RegExp(r'(?:@(?:\.[a-z]+)?:(?:[\w\-_|.]+|\([\w\-_|.]+\)))');
+  final RegExp _linkKeyMatcher = RegExp(r'(?:@(?:\.[a-z]+)?:(?:[\w\-_|.]+|\([\w\-_|.]+\)))');
   final RegExp _linkKeyPrefixMatcher = RegExp(r'^@(?:\.([a-z]+))?:');
   final RegExp _bracketsMatcher = RegExp('[()]');
   final _modifiers = <String, String Function(String?)>{
@@ -19,21 +18,29 @@ class Localization {
     'capitalize': (String? val) => '${val![0].toUpperCase()}${val.substring(1)}'
   };
 
+  bool _useFallbackTranslationsForEmptyResources = false;
+  bool _ignorePluralRules = false;
+
   Localization();
 
   static Localization? _instance;
+
   static Localization get instance => _instance ?? (_instance = Localization());
-  static Localization? of(BuildContext context) =>
-      Localizations.of<Localization>(context, Localization);
+
+  static Localization? of(BuildContext context) => Localizations.of<Localization>(context, Localization);
 
   static bool load(
     Locale locale, {
     Translations? translations,
     Translations? fallbackTranslations,
+    bool useFallbackTranslationsForEmptyResources = false,
+    bool ignorePluralRules = true,
   }) {
     instance._locale = locale;
     instance._translations = translations;
     instance._fallbackTranslations = fallbackTranslations;
+    instance._useFallbackTranslationsForEmptyResources = useFallbackTranslationsForEmptyResources;
+    instance._ignorePluralRules = ignorePluralRules;
     return translations == null ? false : true;
   }
 
@@ -71,8 +78,7 @@ class Localization {
       final formatterName = linkPrefixMatches.first[1];
 
       // Remove the leading @:, @.case: and the brackets
-      final linkPlaceholder =
-          link.replaceAll(linkPrefix, '').replaceAll(_bracketsMatcher, '');
+      final linkPlaceholder = link.replaceAll(linkPrefix, '').replaceAll(_bracketsMatcher, '');
 
       var translated = _resolve(linkPlaceholder, forceFallback: forceFallback);
 
@@ -81,14 +87,13 @@ class Localization {
           translated = _modifiers[formatterName]!(translated);
         } else {
           if (logging) {
-            EasyLocalization.logger.warning(
-                'Undefined modifier $formatterName, available modifiers: ${_modifiers.keys.toString()}');
+            EasyLocalization.logger
+                .warning('Undefined modifier $formatterName, available modifiers: ${_modifiers.keys.toString()}');
           }
         }
       }
 
-      result =
-          translated.isEmpty ? result : result.replaceAll(link, translated);
+      result = translated.isEmpty ? result : result.replaceAll(link, translated);
     }
 
     return result;
@@ -104,14 +109,29 @@ class Localization {
 
   String _replaceNamedArgs(String res, Map<String, String>? args) {
     if (args == null || args.isEmpty) return res;
-    args.forEach((String key, String value) =>
-        res = res.replaceAll(RegExp('{$key}'), value));
+    args.forEach((String key, String value) => res = res.replaceAll(RegExp('{$key}'), value));
     return res;
   }
 
   static PluralRule? _pluralRule(String? locale, num howMany) {
+    if (instance._ignorePluralRules) {
+      return () => _pluralCaseFallback(howMany);
+    }
     startRuleEvaluation(howMany);
     return pluralRules[locale];
+  }
+
+  static PluralCase _pluralCaseFallback(num value) {
+    switch (value) {
+      case 0:
+        return PluralCase.ZERO;
+      case 1:
+        return PluralCase.ONE;
+      case 2:
+        return PluralCase.TWO;
+      default:
+        return PluralCase.OTHER;
+    }
   }
 
   String plural(
@@ -123,22 +143,11 @@ class Localization {
     NumberFormat? format,
     bool forceFallback = false,
   }) {
-    late PluralCase pluralCase;
     late String res;
-    var pluralRule = _pluralRule(_locale.languageCode, value);
-    switch (value) {
-      case 0:
-        pluralCase = PluralCase.ZERO;
-        break;
-      case 1:
-        pluralCase = PluralCase.ONE;
-        break;
-      case 2:
-        pluralCase = PluralCase.TWO;
-        break;
-      default:
-        pluralCase = pluralRule!();
-    }
+
+    final pluralRule = _pluralRule(_locale.languageCode, value);
+    final pluralCase = pluralRule != null ? pluralRule() : _pluralCaseFallback(value);
+
     switch (pluralCase) {
       case PluralCase.ZERO:
         res = _resolvePlural(key, 'zero', forceFallback: forceFallback);
@@ -189,7 +198,7 @@ class Localization {
 
   String _resolve(String key, {bool logging = true, bool fallback = true, bool forceFallback = false}) {
     var resource = forceFallback == true ? _fallbackTranslations?.get(key) : _translations?.get(key);
-    if (resource == null) {
+    if (resource == null || (_useFallbackTranslationsForEmptyResources && resource.isEmpty)) {
       if (logging) {
         EasyLocalization.logger.warning('Localization key [$key] not found');
       }
@@ -197,10 +206,9 @@ class Localization {
         return key;
       } else {
         resource = _fallbackTranslations?.get(key);
-        if (resource == null) {
+        if (resource == null || (_useFallbackTranslationsForEmptyResources && resource.isEmpty)) {
           if (logging) {
-            EasyLocalization.logger
-                .warning('Fallback localization key [$key] not found');
+            EasyLocalization.logger.warning('Fallback localization key [$key] not found');
           }
           return key;
         }
@@ -209,7 +217,7 @@ class Localization {
     return resource;
   }
 
-  bool exists(String key){
+  bool exists(String key) {
     return _translations?.get(key) != null;
   }
 }
